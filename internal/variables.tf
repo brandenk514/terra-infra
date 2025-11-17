@@ -15,50 +15,117 @@ variable "timezone" {
   default     = "America/Los_Angeles"
 }
 
-# variable "semaphore_admin" {
-#   description = "Semaphore admin username"
-#   type        = string
-# }
+variable "puid" {
+  description = "User ID for container permissions"
+  type        = string
+  default     = "1000"
+}
 
-# variable "semaphore_admin_password" {
-#   description = "Semaphore admin password"
-#   type        = string
-#   sensitive   = true
-# }
+variable "pgid" {
+  description = "Group ID for container permissions"
+  type        = string
+  default     = "1000"
+}
 
-# variable "semaphore_admin_name" {
-#   description = "Semaphore admin name"
-#   type        = string
-# }
+variable "traefik_dashboard_credentials" {
+  description = "Traefik dashboard basic auth credentials"
+  type        = string
+  sensitive   = true
+}
 
-# variable "semaphore_admin_email" {
-#   description = "Semaphore admin email"
-#   type        = string
-# }
+variable "openvpn_username" {
+  description = "OpenVPN username"
+  type        = string
+  sensitive   = true
+}
 
-# variable "media_server" {
-#   description = "DNS of the media server"
-#   type        = string
-# }
+variable "openvpn_password" {
+  description = "OpenVPN password"
+  type        = string
+  sensitive   = true
+}
 
-# variable "transmission_mnt" {
-#   description = "Path to the Transmission download volume"
-#   type        = string
-# }
+variable "immich_version" {
+  description = "Immich container version"
+  type        = string
+  default     = "release"
+}
 
-# variable "media_library_mnt" {
-#   description = "Path to the media library volume"
-#   type        = string
-# }
+variable "db_password" {
+  description = "Immich database password"
+  type        = string
+  sensitive   = true
+}
 
-# variable "openvpn_username" {
-#   description = "OpenVPN username"
-#   type        = string
-#   sensitive   = true
-# }
+variable "db_username" {
+  description = "Immich database username"
+  type        = string
+  default     = "postgres"
+}
 
-# variable "openvpn_password" {
-#   description = "OpenVPN password"
-#   type        = string
-#   sensitive   = true
-# }
+variable "db_database_name" {
+  description = "Immich database name"
+  type        = string
+  default     = "immich"
+}
+
+variable "db_data_location" {
+  description = "Path to immich database data directory"
+  type        = string
+}
+
+variable "upload_location" {
+  description = "Path to immich upload directory"
+  type        = string
+}
+
+variable "log_level" {
+  description = "FlareSolverr log level"
+  type        = string
+  default     = "info"
+}
+
+variable "log_html" {
+  description = "FlareSolverr log HTML"
+  type        = string
+  default     = "false"
+}
+
+variable "captcha_solver" {
+  description = "FlareSolverr captcha solver"
+  type        = string
+  default     = "none"
+}
+
+variable "beszel_key" {
+  description = "Beszel agent key"
+  type        = string
+  sensitive   = true
+}
+
+variable "beszel_token" {
+  description = "Beszel agent token"
+  type        = string
+  sensitive   = true
+}
+
+variable "semaphore_admin" {
+  description = "Semaphore admin username"
+  type        = string
+}
+
+variable "semaphore_admin_password" {
+  description = "Semaphore admin password"
+  type        = string
+  sensitive   = true
+}
+
+variable "semaphore_admin_name" {
+  description = "Semaphore admin name"
+  type        = string
+}
+
+variable "semaphore_admin_email" {
+  description = "Semaphore admin email"
+  type        = string
+}

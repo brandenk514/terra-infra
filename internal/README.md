@@ -1,58 +1,162 @@
-# Docker Terraform Setup
+# Docker Compose to Terraform Migration
 
-This Terraform configuration sets up a Docker environment with multiple containers and networks.
+This directory contains a complete Terraform deployment that replicates your Docker Compose stack.
 
-## Requirements
+## Overview
 
-- Terraform >= 0.12
-- Docker
+The deployment includes:
 
-## Providers
+- **Networking**: Traefik proxy network and Immich backend network
+- **Reverse Proxy**: Traefik v3.6.1 with Cloudflare SSL/TLS and basic auth
+- **Media Management**: Sonarr, Radarr, Lidarr, Prowlarr
+- **Download Client**: Transmission with OpenVPN
+- **Automation**: Semaphore UI
+- **Photo Management**: Immich with PostgreSQL and Redis
+- **Monitoring**: Dozzle, Beszel Agent
+- **Additional Services**: JellySeer, Huntarr, FlareSolverr, LazyLibrarian
 
-- Docker (kreuzwerker/docker)
+## Prerequisites
 
-## Variables
+1. **Terraform** >= 1.0
+2. **Docker Provider** >= 3.6.2 (automatically installed via `terraform init`)
+3. SSH access to your Docker host
+4. The following host directories pre-created:
+   - `/opt/traefik/confs/` - Traefik configuration files
+   - `/opt/traefik/certs/` - Traefik certificates directory
+   - `/mnt/tovpn-repo/` - Transmission downloads directory
+   - `/mnt/immich-repo/` - Immich data directories
+   - `/opt/jellyseer/` - Jellyseerr configuration
+   - `/opt/beszel/agent_data/` - Beszel agent data
 
-- `docker_host`: The Docker host.
-- `ssh_key_path`: Path to the SSH key.
-- `media_server`: The address of the media server.
-- `transmission_mnt`: The mount point for the Transmission volume.
-- `media_library_mnt`: The mount point for the media library volume.
-- `semaphore_admin`: Semaphore admin username.
-- `semaphore_admin_password`: Semaphore admin password.
-- `semaphore_admin_name`: Semaphore admin name.
-- `semaphore_admin_email`: Semaphore admin email.
-- `timezone`: Timezone for the containers.
-- `openvpn_username`: Username for OpenVPN.
-- `openvpn_password`: Password for OpenVPN.
+## Configuration
 
-## Usage
+1. Copy the example variables file:
+   ```bash
+   cp .tfvars.example .tfvars
+   ```
 
-1. Clone the repository.
-2. Create a `terraform.tfvars` file with the required variables.
-3. Run `terraform init` to initialize the configuration.
-4. Run `terraform apply` to apply the configuration.
+2. Edit `.tfvars` with your specific values:
+   - Docker host SSH connection string
+   - SSH key path
+   - Traefik dashboard credentials (bcrypt hashed)
+   - Database passwords
+   - API keys and tokens
 
-## Example `terraform.tfvars`
+## Important Variables
 
-```hcl
-docker_host        = "tcp://192.168.1.100:2376"
-ssh_key_path       = "/path/to/ssh/key"
-media_server       = "192.168.1.200"
-transmission_mnt   = "/mnt/transmission"
-media_library_mnt  = "/mnt/media-library"
-semaphore_admin    = "admin"
-semaphore_admin_password = "password"
-semaphore_admin_name = "Admin Name"
-semaphore_admin_email = "admin@example.com"
-timezone           = "America/New_York"
-openvpn_username   = "your_openvpn_username"
-openvpn_password   = "your_openvpn_password"
+### Required Sensitive Variables
+- `traefik_dashboard_credentials` - Basic auth credentials (format: `user:$2y$10$...`)
+- `openvpn_username` - NordVPN credentials
+- `openvpn_password` - NordVPN credentials
+- `db_password` - Immich database password
+- `beszel_key` and `beszel_token` - Monitoring credentials
+
+### Directory Paths
+- `db_data_location` - PostgreSQL data directory
+- `upload_location` - Immich upload directory
+
+### Optional Variables
+- `immich_version` - Defaults to "release"
+- `timezone` - Defaults to "America/Los_Angeles"
+- `puid` and `pgid` - Defaults to "1000"
+
+## Deployment
+
+1. Initialize Terraform:
+   ```bash
+   terraform init
+   ```
+
+2. Review the plan:
+   ```bash
+   terraform plan -lock=false --var-file=./.tfvars
+   ```
+
+3. Apply the configuration:
+   ```bash
+   terraform apply -lock=false --var-file=./.tfvars
+   ```
+
+## Network Architecture
+
+### Traefik Proxy Network
+- Primary network for external-facing services
+- Services: Traefik, Sonarr, Radarr, Lidarr, Prowlarr, Transmission, Dozzle, JellySeer, LazyLibrarian, FlareSolverr
+- All configured with Traefik labels for automatic routing
+
+### Immich Backend Network
+- Isolated network for Immich services
+- Services: Immich Server, Immich ML, Redis, PostgreSQL
+- Traefik also connected for external routing
+
+## Traefik Configuration
+
+Services are automatically routed via Traefik with labels. Key configurations:
+
+- **Entry Points**: 
+  - `web` (HTTP:80)
+  - `websecure` (HTTPS:443)
+  - `external-websecure` (External HTTPS on 443)
+- **Dashboard**: `traefik.local.uaccloud.com` (requires basic auth)
+- **Cert Resolver**: Cloudflare
+- **TLS Domains**: `*.uaccloud.com`
+
+## Volumes
+
+All volumes are Docker-managed except:
+- NFS mount for media library: `192.168.105.20:/mnt/backup_pool/media-backup-pool`
+- Host-mounted directories for configuration persistence
+
+## Security Considerations
+
+1. **Traefik**: Security context prevents container escape (`no-new-privileges:true`)
+2. **Transmission**: NET_ADMIN capability with privileged mode for VPN tunneling
+3. **Secrets**: Use `.tfvars` with sensitive=true for credentials (excluded from Git)
+4. **Docker Socket**: Mounted read-only where needed
+
+## Troubleshooting
+
+### Docker Connection Issues
+```bash
+terraform login
+# Ensure SSH key has proper permissions: chmod 600 ~/.ssh/id_rsa
 ```
 
-## Resources
+### Traefik Routing Issues
+- Check labels are applied: `docker inspect <container>`
+- Verify DNS resolution for domains
+- Check Traefik dashboard at port 8080
 
-- Docker networks: `mgmt_net`, `flix_net`, `tovpn_net`
-- Docker volumes: `transmission_dl_vol`, `media_library`, `portainer_data`, `uptime_kuma_data`, `semaphore_data`, `semaphore_config`, `semaphore_tmp`, `tdarr_data`, `tdarr_config`, `tdarr_logs`, `transcode_cache`, `tdarr_node_mov_configs`, `tdarr_node_mov_logs`, `tdarr_node_mov_cache`, `tdarr_node_tv_configs`, `tdarr_node_tv_logs`, `tdarr_node_tv_cache`, `transmission_conf_vol`
-- Docker images: `portainer`, `uptime_kuma`, `semaphore_ui`, `tdarr`, `tdarr_node`, `transmission_openvpn`, `flaresolverr`
-- Docker containers: `portainer`, `uptime_kuma`, `semaphore_ui`, `tdarr_server`, `tdarr_node_mov`, `tdarr_node_tv`, `transmission_openvpn`, `flaresolverr`
+### Database Connection
+- Verify PostgreSQL is running first
+- Check Immich server logs: `docker logs immich_server`
+
+### NFS Mount Issues
+- Verify NFS export is accessible from Docker host
+- Check firewall rules on NFS server
+
+## Upgrading Services
+
+To upgrade a service image:
+1. Update the image tag in `main.tf`
+2. Run `terraform plan` to preview
+3. Apply with `terraform apply`
+
+## Removing Resources
+
+To cleanly remove all resources:
+```bash
+terraform destroy -lock=false --var-file=./.tfvars
+```
+
+## State Management
+
+- State file is stored locally (`.tfstate`)
+- For production, consider remote state (S3, Terraform Cloud, etc.)
+- Backup state before major changes
+
+## Additional Resources
+
+- [Terraform Docker Provider](https://registry.terraform.io/providers/kreuzwerker/docker/latest/docs)
+- [Traefik Documentation](https://doc.traefik.io/)
+- [Immich Documentation](https://immich.app/)
