@@ -14,22 +14,12 @@ provider "docker" {
 
 ### NETWORKS ###
 
-resource "docker_network" "mgmt_net" {
-  name   = "mgmt_net"
+resource "docker_network" "proxy_srv_net" {
+  name   = "proxy_srv_net"
   driver = "bridge"
 }
 
-# resource "docker_network" "flix_net" {
-#   name   = "flix_net"
-#   driver = "bridge"
-# }
-
-# resource "docker_network" "tovpn_net" {
-#   name   = "tovpn_net"
-#   driver = "bridge"
-# }
-
-# ### VOLUMES ###
+### VOLUMES ###
 
 # resource "docker_volume" "transmission_dl_vol" {
 #   name   = "transmission_dl_vol"
@@ -51,30 +41,35 @@ resource "docker_network" "mgmt_net" {
 #   }
 # }
 
-# ### IMAGES ###
-
-# resource "docker_image" "portainer" {
-#   name          = "portainer/portainer-ce:2.21.5"
-#   keep_locally  = true
-# }
+### IMAGES ###
 
 resource "docker_image" "uptime_kuma" {
   name          = "louislam/uptime-kuma:1.23.16"
   keep_locally  = true
 }
 
-# resource "docker_image" "semaphore_ui" {
-#   name          = "semaphoreui/semaphore:v2.11.2"
-#   keep_locally  = true
-# }
+resource "docker_image" "sonarr" {
+  name          = "linuxserver/sonarr:latest"
+  keep_locally  = true
+}
+
+resource "docker_image" "radarr" {
+  name          = "linuxserver/radarr:latest"
+  keep_locally  = true
+}
+
+resource "docker_image" "lidarr" {
+  name          = "linuxserver/lidarr:latest"
+  keep_locally  = true
+}
+
+resource "docker_image" "traefik" {
+  name          = "traefik:v3.0"
+  keep_locally  = true
+}
 
 # resource "docker_image" "tdarr" {
 #   name          = "ghcr.io/haveagitgat/tdarr:latest"
-#   keep_locally  = true
-# }
-
-# resource "docker_image" "tdarr_node" {
-#   name          = "ghcr.io/haveagitgat/tdarr_node:latest"
 #   keep_locally  = true
 # }
 
@@ -88,44 +83,14 @@ resource "docker_image" "uptime_kuma" {
 #   keep_locally  = true
 # }
 
-# ### CONTAINERS ###
-
-# resource "docker_container" "portainer" {
-#   image   = docker_image.portainer.image_id
-#   name    = "portainer"
-#   restart = "unless-stopped"
-#   ports {
-#     internal = 8000
-#     external = 8000
-#   }
-#   ports {
-#     internal = 9000
-#     external = 9000
-#   }
-#   ports {
-#     internal = 9443
-#     external = 9443
-#   }
-#   networks_advanced {
-#     name    = docker_network.mgmt_net.name
-#     aliases = ["portainer"]
-#   }
-#   volumes {
-#     host_path      = "/var/run/docker.sock"
-#     container_path = "/var/run/docker.sock"
-#   }
-#   volumes {
-#     volume_name    = "portainer_data"
-#     container_path = "/data"
-#   }
-# }
+### CONTAINERS ###
 
 resource "docker_container" "uptime_kuma" {
   image   = docker_image.uptime_kuma.image_id
   name    = "uptime-kuma"
   restart = "unless-stopped"
   networks_advanced {
-    name    = docker_network.mgmt_net.name
+    name    = docker_network.proxy_srv_net.name
     aliases = ["uptime-kuma"]
   }
   ports {
@@ -138,38 +103,131 @@ resource "docker_container" "uptime_kuma" {
   }
 }
 
-# resource "docker_container" "semaphore_ui" {
-#   image   = docker_image.semaphore_ui.image_id
-#   name    = "semaphore-ui"
-#   restart = "unless-stopped"
-#   networks_advanced {
-#     name    = docker_network.mgmt_net.name
-#     aliases = ["semaphore-ui"]
-#   }
-#   ports {
-#     internal = 3000
-#     external = 30080
-#   }
-#   env = [
-#     "SEMAPHORE_DB_DIALECT=bolt",
-#     "SEMAPHORE_ADMIN=${var.semaphore_admin}",
-#     "SEMAPHORE_ADMIN_PASSWORD=${var.semaphore_admin_password}",
-#     "SEMAPHORE_ADMIN_NAME=${var.semaphore_admin_name}",
-#     "SEMAPHORE_ADMIN_EMAIL=${var.semaphore_admin_email}"
-#   ]
-#   volumes {
-#     volume_name    = "semaphore_data"
-#     container_path = "/var/lib/semaphore"
-#   }
-#   volumes {
-#     volume_name    = "semaphore_config"
-#     container_path = "/etc/semaphore"
-#   }
-#   volumes {
-#     volume_name    = "semaphore_tmp"
-#     container_path = "/tmp/semaphore"
-#   }
-# }
+resource "docker_container" "sonarr" {
+  image   = docker_image.sonarr.image_id
+  name    = "sonarr"
+  restart = "unless-stopped"
+  networks_advanced {
+    name    = docker_network.proxy_srv_net.name
+    aliases = ["sonarr"]
+  }
+  ports {
+    internal = 8989
+    external = 8989
+  }
+  env = [
+    "PUID=1000",
+    "PGID=1000",
+    "TZ=${var.timezone}"
+  ]
+  labels {
+    label = "traefik.enable"
+    value = "true"
+  }
+  labels {
+    label = "traefik.http.routers.sonarr.rule"
+    value = "Host(`sonarr.localhost`)"
+  }
+  labels {
+    label = "traefik.http.routers.sonarr.entrypoints"
+    value = "web"
+  }
+  labels {
+    label = "traefik.http.services.sonarr.loadbalancer.server.port"
+    value = "8989"
+  }
+  volumes {
+    volume_name    = "sonarr_data"
+    container_path = "/config"
+  }
+}
+
+resource "docker_container" "radarr" {
+  image   = docker_image.radarr.image_id
+  name    = "radarr"
+  restart = "unless-stopped"
+  networks_advanced {
+    name    = docker_network.proxy_srv_net.name
+    aliases = ["radarr"]
+  }
+  ports {
+    internal = 7878
+    external = 7878
+  }
+  env = [
+    "PUID=1000",
+    "PGID=1000",
+    "TZ=${var.timezone}"
+  ]
+  volumes {
+    volume_name    = "radarr_data"
+    container_path = "/config"
+  }
+}
+
+resource "docker_container" "lidarr" {
+  image   = docker_image.lidarr.image_id
+  name    = "lidarr"
+  restart = "unless-stopped"
+  networks_advanced {
+    name    = docker_network.proxy_srv_net.name
+    aliases = ["lidarr"]
+  }
+  ports {
+    internal = 8686
+    external = 8686
+  }
+  env = [
+    "PUID=1000",
+    "PGID=1000",
+    "TZ=${var.timezone}"
+  ]
+  volumes {
+    volume_name    = "lidarr_data"
+    container_path = "/config"
+  }
+}
+
+resource "docker_container" "traefik" {
+  image   = docker_image.traefik.image_id
+  name    = "traefik"
+  restart = "unless-stopped"
+  networks_advanced {
+    name    = docker_network.proxy_srv_net.name
+    aliases = ["traefik"]
+  }
+  ports {
+    internal = 80
+    external = 80
+  }
+  ports {
+    internal = 443
+    external = 443
+  }
+  ports {
+    internal = 8080
+    external = 8080
+  }
+  env = [
+    "TZ=${var.timezone}"
+  ]
+  command = [
+    "--api.insecure=true",
+    "--providers.docker=true",
+    "--providers.docker.exposedbydefault=false",
+    "--entrypoints.web.address=:80",
+    "--entrypoints.websecure.address=:443"
+  ]
+  volumes {
+    host_path      = "/var/run/docker.sock"
+    container_path = "/var/run/docker.sock"
+    read_only      = true
+  }
+  volumes {
+    volume_name    = "traefik_data"
+    container_path = "/data"
+  }
+}
 
 # resource "docker_container" "tdarr_server" {
 #   image        = docker_image.tdarr.image_id
@@ -219,80 +277,6 @@ resource "docker_container" "uptime_kuma" {
 #   }
 #   volumes {
 #     volume_name    = "tdarr_transcode_cache"
-#     container_path = "/temp"
-#   }
-# }
-
-# resource "docker_container" "tdarr_node_mov" {
-#   image   = docker_image.tdarr_node.image_id
-#   name    = "tdarr-node_mov"
-#   restart = "unless-stopped"
-#   networks_advanced {
-#     name    = docker_network.flix_net.name
-#     aliases = ["tdarr-node_mov"]
-#   }
-#   env = [
-#     "TZ=${var.timezone}",
-#     "PUID=1000",
-#     "PGID=1000",
-#     "UMASK_SET=002",
-#     "nodeName=tdarr-node_mov",
-#     "serverIP=${docker_container.tdarr_server.network_data.0.ip_address}",
-#     "serverPort=8266",
-#     "inContainer=true",
-#     "ffmpegVersion=6",
-#   ]
-#   volumes {
-#     volume_name    = "tdarr_node_mov_configs"
-#     container_path = "/app/configs"
-#   }
-#   volumes {
-#     volume_name    = "tdarr_node_mov_logs"
-#     container_path = "/app/logs"
-#   }
-#   volumes {
-#     volume_name    = docker_volume.media_library.name
-#     container_path = "/media"
-#   }
-#   volumes {
-#     volume_name    = "tdarr_node_mov_cache"
-#     container_path = "/temp"
-#   }
-# }
-
-# resource "docker_container" "tdarr_node_tv" {
-#   image   = docker_image.tdarr_node.image_id
-#   name    = "tdarr_node_tv"
-#   restart = "unless-stopped"
-#   networks_advanced {
-#     name    = docker_network.flix_net.name
-#     aliases = ["tdarr_node_tv"]
-#   }
-#   env = [
-#     "TZ=${var.timezone}",
-#     "PUID=1000",
-#     "PGID=1000",
-#     "UMASK_SET=002",
-#     "nodeName=tdarr-node_tv",
-#     "serverIP=${docker_container.tdarr_server.network_data.0.ip_address}",
-#     "serverPort=8266",
-#     "inContainer=true",
-#     "ffmpegVersion=6",
-#   ]
-#   volumes {
-#     volume_name    = "tdarr_node_tv_configs"
-#     container_path = "/app/configs"
-#   }
-#   volumes {
-#     volume_name    = "tdarr_node_tv_logs"
-#     container_path = "/app/logs"
-#   }
-#   volumes {
-#     volume_name    = docker_volume.media_library.name
-#     container_path = "/media"
-#   }
-#   volumes {
-#     volume_name    = "tdarr_node_tv_cache"
 #     container_path = "/temp"
 #   }
 # }

@@ -9,6 +9,12 @@ variable "ssh_key_path" {
   sensitive   = true
 }
 
+variable "timezone" {
+  description = "Region/City timezone"
+  type        = string
+  default     = "America/Los_Angeles"
+}
+
 # variable "semaphore_admin" {
 #   description = "Semaphore admin username"
 #   type        = string
@@ -55,9 +61,4 @@ variable "ssh_key_path" {
 #   description = "OpenVPN password"
 #   type        = string
 #   sensitive   = true
-# }
-
-# variable "timezone" {
-#   description = "Region/City timezone"
-#   type        = string
 # }
