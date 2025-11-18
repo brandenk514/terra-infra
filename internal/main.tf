@@ -76,6 +76,21 @@ resource "docker_volume" "lazylibrarian_config" {
   driver = "local"
 }
 
+resource "docker_volume" "beszel_data" {
+  name   = "beszel_data"
+  driver = "local"
+}
+
+resource "docker_volume" "beszel_socket" {
+  name   = "beszel_socket"
+  driver = "local"
+}
+
+resource "docker_volume" "beszel_agent_data" {
+  name   = "beszel_agent_data"
+  driver = "local"
+}
+
 resource "docker_volume" "media_library_nfs" {
   name   = var.media_server
   driver = "local"
@@ -165,6 +180,11 @@ resource "docker_image" "flaresolverr" {
 
 resource "docker_image" "lazylibrarian" {
   name          = "lscr.io/linuxserver/lazylibrarian:latest"
+  keep_locally  = true
+}
+
+resource "docker_image" "beszel_hub" {
+  name          = "henrygd/beszel:latest"
   keep_locally  = true
 }
 
@@ -992,6 +1012,62 @@ resource "docker_container" "lazylibrarian" {
   }
 }
 
+resource "docker_container" "beszel_hub" {
+  image   = docker_image.beszel_hub.image_id
+  name    = "beszel"
+  restart = "unless-stopped"
+
+  networks_advanced {
+    name    = docker_network.proxy.name
+    aliases = ["beszel"]
+  }
+
+  ports {
+    internal = 8090
+    external = 8090
+  }
+
+  volumes {
+    volume_name    = docker_volume.beszel_data.name
+    container_path = "/beszel_data"
+  }
+  volumes {
+    volume_name    = docker_volume.beszel_socket.name
+    container_path = "/beszel_socket"
+  }
+
+  env = [
+    "PUID=${var.puid}",
+    "PGID=${var.pgid}",
+    "TZ=${var.timezone}"
+  ]
+
+  labels {
+    label = "traefik.enable"
+    value = "true"
+  }
+  labels {
+    label = "traefik.http.routers.beszel.rule"
+    value = "Host(`beszel.local.uaccloud.com`)"
+  }
+  labels {
+    label = "traefik.http.services.beszel.loadbalancer.server.port"
+    value = "8090"
+  }
+  labels {
+    label = "traefik.http.routers.beszel.tls"
+    value = "true"
+  }
+  labels {
+    label = "traefik.http.routers.beszel.tls.certresolver"
+    value = "cloudflare"
+  }
+  labels {
+    label = "traefik.http.routers.beszel.entrypoints"
+    value = "websecure"
+  }
+}
+
 resource "docker_container" "beszel_agent" {
   image   = docker_image.beszel_agent.image_id
   name    = "beszel-agent"
@@ -999,19 +1075,23 @@ resource "docker_container" "beszel_agent" {
   network_mode = "host"
 
   volumes {
+    volume_name    = docker_volume.beszel_agent_data.name
+    container_path = "/var/lib/beszel-agent"
+  }
+  volumes {
+    volume_name    = docker_volume.beszel_socket.name
+    container_path = "/beszel_socket"
+  }
+  volumes {
     host_path      = "/var/run/docker.sock"
     container_path = "/var/run/docker.sock"
     read_only      = true
   }
-  volumes {
-    host_path      = "/opt/beszel/agent_data"
-    container_path = "/var/lib/beszel-agent"
-  }
 
   env = [
-    "LISTEN=45876",
-    "KEY=${var.beszel_key}",
-    "TOKEN=${var.beszel_token}",
-    "HUB_URL=http://uswor-beszel.local.uaccloud.com:8090"
+    "LISTEN=/beszel_socket/beszel.sock",
+    "HUB_URL=http://localhost:8090",
+    "TOKEN=${var.beszel_agent_token}",
+    "KEY=${var.beszel_agent_key}"
   ]
 }

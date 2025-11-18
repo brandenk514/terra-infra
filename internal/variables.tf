@@ -97,13 +97,13 @@ variable "captcha_solver" {
   default     = "none"
 }
 
-variable "beszel_key" {
+variable "beszel_agent_key" {
   description = "Beszel agent key"
   type        = string
   sensitive   = true
 }
 
-variable "beszel_token" {
+variable "beszel_agent_token" {
   description = "Beszel agent token"
   type        = string
   sensitive   = true
