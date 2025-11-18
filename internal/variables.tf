@@ -129,3 +129,29 @@ variable "semaphore_admin_email" {
   description = "Semaphore admin email"
   type        = string
 }
+
+variable "semaphore_db_dialect" {
+  description = "Semaphore database dialect"
+  type        = string
+}
+
+variable "media_server" {
+  description = "Media server address"
+  type        = string
+}
+
+variable "media_library_mnt" {
+  description = "Path to media library"
+  type        = string
+}
+
+variable "cf_dns_api_token" {
+  description = "Cloudflare DNS API Token"
+  type        = string
+  sensitive   = true
+}
+
+variable "tovpn_mnt" {
+  description = "Path to media library"
+  type        = string
+}

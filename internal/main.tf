@@ -77,12 +77,12 @@ resource "docker_volume" "lazylibrarian_config" {
 }
 
 resource "docker_volume" "media_library_nfs" {
-  name   = "media_library_nfs"
+  name   = var.media_server
   driver = "local"
   driver_opts = {
     type   = "nfs4"
     o      = "addr=192.168.105.20,rw"
-    device = ":/mnt/backup_pool/media-backup-pool"
+    device = var.media_library_mnt
   }
 }
 
@@ -308,7 +308,12 @@ resource "docker_container" "semaphore_ui" {
   env = [
     "PUID=${var.puid}",
     "PGID=${var.pgid}",
-    "TZ=${var.timezone}"
+    "TZ=${var.timezone}",
+    "SEMAPHORE_ADMIN=${var.semaphore_admin}",
+    "SEMAPHORE_ADMIN_PASSWORD=${var.semaphore_admin_password}",
+    "SEMAPHORE_ADMIN_NAME=${var.semaphore_admin_name}",
+    "SEMAPHORE_ADMIN_EMAIL=${var.semaphore_admin_email}",
+    "SEMAPHORE_DB_DIALECT=${var.semaphore_db_dialect}"
   ]
 
   labels {
@@ -409,7 +414,7 @@ resource "docker_container" "sonarr" {
     container_path = "/tv"
   }
   volumes {
-    host_path      = "/mnt/tovpn-repo"
+    host_path      = var.tovpn_mnt
     container_path = "/downloads"
   }
 
@@ -464,7 +469,7 @@ resource "docker_container" "radarr" {
     container_path = "/movies"
   }
   volumes {
-    host_path      = "/mnt/tovpn-repo"
+    host_path      = var.tovpn_mnt
     container_path = "/downloads"
   }
 
@@ -519,7 +524,7 @@ resource "docker_container" "lidarr" {
     container_path = "/music"
   }
   volumes {
-    host_path      = "/mnt/tovpn-repo"
+    host_path      = var.tovpn_mnt
     container_path = "/downloads"
   }
 
@@ -565,7 +570,7 @@ resource "docker_container" "tovpn" {
   }
 
   volumes {
-    host_path      = "/mnt/tovpn-repo"
+    host_path      = var.tovpn_mnt
     container_path = "/data"
   }
   volumes {
@@ -946,7 +951,7 @@ resource "docker_container" "lazylibrarian" {
     container_path = "/config"
   }
   volumes {
-    host_path      = "/mnt/tovpn-repo"
+    host_path      = var.tovpn_mnt
     container_path = "/downloads"
   }
   volumes {
