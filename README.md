@@ -1,4 +1,4 @@
-# Docker Compose to Terraform Migration
+# Terraform Infrastructure
 
 This directory contains a complete Terraform deployment that replicates your Docker Compose stack.
 
@@ -45,11 +45,12 @@ The deployment includes:
 ## Important Variables
 
 ### Required Sensitive Variables
-- `traefik_dashboard_credentials` - Basic auth credentials (format: `user:$2y$10$...`)
+
+- `traefik_dashboard_credentials` - Basic auth credentials with hashed password
 - `openvpn_username` - NordVPN credentials
 - `openvpn_password` - NordVPN credentials
 - `db_password` - Immich database password
-- `beszel_key` and `beszel_token` - Monitoring credentials
+- `beszel_agent_key` and `beszel_agent_token` - Monitoring credentials
 
 ### Directory Paths
 - `db_data_location` - PostgreSQL data directory
